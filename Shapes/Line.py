@@ -26,16 +26,8 @@ class Line:
             return self.start == other.start and self.end == other.end
         return False
 
-    def __contains__(self, point: Point):
-        """
-        Function that checks if a point is contained in the line. Use the 'in' keyword to check.
-        Example: line = ((1, 0), (4, 0)), pointA = (2, 0), pointB = (5, 0):
-            pointA in line -> True; pointB in line -> False
-        :param point: point to be checked if the line contains it
-        :return: True if the point is inside the line, False otherwise
-        """
-        return abs(point.y - point.x * self.a - self.b) <= 10 ** -14 and \
-    self.start.x <= point.x <= self.end.x and min(self.start.y, self.end.y) <= point.y <= max(self.start.y, self.end.y)
+    def __copy__(self):
+        return Line(self.start, self.end, self.color, self.width)
 
     @property
     def start(self):

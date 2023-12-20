@@ -19,11 +19,15 @@ class Rectangle(Rect):
             return self.x <= item[0] <= self.x + self.width and self.y <= item[1] <= self.y + self.height
         if isinstance(item, Point):
             return self.x <= item.x - item.radius and item.x + item.radius <= self.x + self.width and\
-                   self.y <= item.y - item.radius and item.y + item.radius <= self.x + self.height
+                   self.y <= item.y - item.radius and item.y + item.radius <= self.y + self.height
         if isinstance(item, Rectangle):
             return self.x <= item.x and self.y <= item.y and self.x + self.width >= item.x + item.width and\
                 self.y + self.height >= item.y + item.height
         return False
+
+    def __copy__(self):
+        return Rectangle(self.top, self.left, self.width, self.height, self.color, self.border_width,
+                         self.border_color, self.alpha)
 
     @staticmethod
     def form(point1: Point, point2: Point, **kwargs):

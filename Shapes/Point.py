@@ -26,6 +26,9 @@ class Point:
     def __hash__(self):
         return self.x.__hash__() * self.y.__hash__()
 
+    def __copy__(self):
+        return Point(self.x, self.y, self.radius, self.color)
+
     @property
     def x(self):
         return self.__x

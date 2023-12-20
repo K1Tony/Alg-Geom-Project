@@ -1,6 +1,6 @@
 import pygame as pg
 from Assets.Scene import Scene
-from Assets.shapesCollections import Point, PointsCollection, LinesCollection, Rectangle, RectsCollection
+from Assets.shapesCollections import Point, PointsCollection, LinesCollection, Rectangle, RectsCollection, Line
 from Assets.Color import Color
 from Assets.Button import Button
 import numpy as np
@@ -363,6 +363,10 @@ class Visualizer:
                     run = False
 
                 if event.type == pg.KEYDOWN:
+                    if event.key == pg.K_LEFT:
+                        self.__NEXT_SCENE = -1
+                    if event.key == pg.K_RIGHT:
+                        self.__NEXT_SCENE = 1
                     for key, callback in self.__key_bindings:
                         if event.key == key:
                             callback()

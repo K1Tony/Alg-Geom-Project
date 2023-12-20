@@ -76,7 +76,7 @@ class KDTree:
 
     def __init__(self, points: PointsCollection = PointsCollection(), region: Rectangle | None = None,
                  visualizer: Visualizer | None = None):
-        self.__points = points.items
+        self.__points = points
         self.__visualizer = visualizer
         self.__region = region if region is not None else Rectangle()
         self.__root = None
@@ -85,15 +85,6 @@ class KDTree:
 
         self.__visualizer.add_button(self.__message, self.__onclick)
         self.__visualizer.add_button("Save changes", self.__get_data_from_visualizer)
-
-    def __contains__(self, item: Point | Rectangle):
-        if isinstance(item, Point):
-            return self.region.x <= item.x <= self.region.x + self.region.w and\
-                   self.region.y <= item.y <= self.region.y + self.region.h
-        if isinstance(item, Rectangle):
-            return self.region.x <= item.x and self.region.y <= item.y and\
-                   self.region.w >= item.w and self.region.h >= item.h
-        return False
 
     def __get_data_from_visualizer(self):
         self.__points = self.__visualizer.points
@@ -167,15 +158,14 @@ class KDTree:
         if node is None:
             return
         if visualization:
-            self.__visualizer.add_scene(self.__visualizer.last_scene.points,
+            self.__visualizer.add_scene(self.points + PointsCollection(result, color=result_color),
                                         self.__visualizer.last_scene.lines,
                                         RectsCollection([node.region, self.region]))
         if node.is_leaf() and node.point in self.region:
-            node.point.color = result_color
             if visualization:
-                self.__visualizer.update_last_scene(rects=RectsCollection([node.region], color=Color.PURPLE) +
-                                                    RectsCollection([self.region], color=Color.GREEN))
-            result.append(node.point)
+                self.__visualizer.add_updated_scene(points=PointsCollection([node.point.__copy__()], color=result_color),
+                                                    rects=RectsCollection([node.region], color=Color.PURPLE, alpha=50))
+            result.append(node.point.__copy__())
             return
         if node.left is not None:
             if self.__intersects(node.left.region):
@@ -208,19 +198,21 @@ class KDTree:
         return self.build if self.__state == 0 else self.search if self.__state == 1 else self.collapse
 
     def build(self, visualization=True):
-        self.__visualizer.add_scene(points=self.points, rects=RectsCollection([self.region]))
+        self.__visualizer.add_scene(points=self.points,
+                                    lines=self.__visualizer.lines,
+                                    rects=RectsCollection([self.region]))
         self.__root = self.__build(self.__points, visualization=visualization)
         self.__state = 1
-        self.visualizer.update_button(3, self.__message, self.__onclick)
+        self.visualizer.update_button(4, self.__message, self.__onclick)
 
     def search(self, visualization=True):
         result = []
         self.__search(self.__root, visualization=visualization, result=result)
         self.__state = 2
-        self.visualizer.update_button(3, self.__message, self.__onclick)
+        self.visualizer.update_button(4, self.__message, self.__onclick)
         return result
 
     def collapse(self):
         self.__collapse()
         self.__state = 0
-        self.visualizer.update_button(3, self.__message, self.__onclick)
+        self.visualizer.update_button(4, self.__message, self.__onclick)

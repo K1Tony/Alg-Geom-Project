@@ -1,5 +1,6 @@
-from visualizer import Visualizer, pg, Color, Rectangle, RectsCollection, PointsCollection
+from visualizer import Visualizer, pg, LinesCollection, Color, Rectangle, RectsCollection, PointsCollection, Point
 from kdtree import KDTree
+from copy import copy
 
 
 def main():
