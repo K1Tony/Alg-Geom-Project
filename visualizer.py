@@ -281,6 +281,8 @@ class Visualizer:
         self.__lines = LinesCollection()
         self.__rects = RectsCollection()
         self.__search_region = Rectangle()
+        self.scenes.clear()
+        self.__scene_played = -1
 
     def __set_onclick(self, function_callback):
         self.__onclick = function_callback
