@@ -200,7 +200,6 @@ class Visualizer:
     def __set_opposite_toggle(self):
         if self.__TOGGLE == Toggle.MANUAL:
             self.set_automatic()
-
         else:
             self.set_manual()
         self.__buttons["Toggle"].update_text(self.toggle)

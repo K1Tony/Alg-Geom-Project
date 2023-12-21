@@ -75,11 +75,13 @@ class KDTree:
     __MAX_WIDTH = 6
 
     def __init__(self, points: PointsCollection = PointsCollection(), region: Rectangle | None = None,
-                 visualizer: Visualizer | None = None):
+                 visualizer: Visualizer | None = None, show_visualization: bool = True):
         self.__points = points
         self.__visualizer = visualizer
         self.__region = region if region is not None else Rectangle()
         self.__root = None
+
+        self.__show_visualization = show_visualization
 
         self.__state = 0
 
@@ -97,18 +99,20 @@ class KDTree:
     def __intersects(self, item: Rectangle):
         return item.colliderect(self.region)
 
-    def __build(self, points, depth=0, visualization=True, upper_end=None, lower_end=None, left_end=None, right_end=None):
+    def __build(self, points, depth=0, upper_end=None, lower_end=None, left_end=None, right_end=None):
         if upper_end is None: upper_end = 0
         if left_end is None: left_end = self.__visualizer.control_panel_width
         if right_end is None: right_end = self.__visualizer.width
         if lower_end is None: lower_end = self.__visualizer.height
-        region = Rectangle(upper_end, left_end, right_end - left_end, lower_end - upper_end, fill_color=Color.BLUE,
+        region = Rectangle(upper_end - self.visualizer.point_radius, left_end - self.visualizer.point_radius,
+                           right_end - left_end + self.visualizer.point_radius * 2,
+                           lower_end - upper_end + self.visualizer.point_radius * 2, fill_color=Color.BLUE,
                            alpha=100)
         if len(points) < 1 or not self.__intersects(region):
             return []
         if region in self.region:
             region.color = Color.PURPLE
-            if visualization:
+            if self.__show_visualization:
                 copied_points = PointsCollection(list(map(lambda point: point.__copy__(), points)), color=Color.BLACK)
                 self.__visualizer.add_scene(
                     points=self.__visualizer.last_scene.points + copied_points,
@@ -118,7 +122,7 @@ class KDTree:
             return points
         if len(points) == 1:
             if points[0] in self.region:
-                if visualization:
+                if self.__show_visualization:
                     copied_points = PointsCollection(list(map(lambda point: point.__copy__(), points)),
                                                      color=Color.BLACK)
                     self.__visualizer.add_scene(
@@ -141,17 +145,17 @@ class KDTree:
                                                  fill_color=Color.GREEN, alpha=50),
                                        Rectangle(pt.y, left_end, right_end - left_end, lower_end - pt.y,
                                                  fill_color=Color.RED, alpha=50)])
-            if visualization:
+            if self.__show_visualization:
                 self.__visualizer.add_updated_scene(lines=LinesCollection([line]))
                 self.__visualizer.update_last_scene(rects=regions + RectsCollection([self.region]))
             if pt in self.region:
                 result.append(pt)
-                if visualization:
+                if self.__show_visualization:
                     self.__visualizer.update_last_scene(points=self.__visualizer.last_scene.points +
                                                         PointsCollection([pt.__copy__()], color=Color.BLACK))
-            result += self.__build(LT, depth + 1, visualization, upper_end=upper_end, lower_end=pt.y, left_end=left_end,
+            result += self.__build(LT, depth + 1, upper_end=upper_end, lower_end=pt.y, left_end=left_end,
                                 right_end=right_end)
-            result += self.__build(RT, depth + 1, visualization, upper_end=pt.y, lower_end=lower_end, left_end=left_end,
+            result += self.__build(RT, depth + 1, upper_end=pt.y, lower_end=lower_end, left_end=left_end,
                                  right_end=right_end)
         else:
             pt = median(points, key=lambda point: point.x)
@@ -164,17 +168,17 @@ class KDTree:
                                                  fill_color=Color.GREEN, alpha=50),
                                        Rectangle(upper_end, pt.x, right_end - pt.x, lower_end - upper_end,
                                                  fill_color=Color.RED, alpha=50)])
-            if visualization:
+            if self.__show_visualization:
                 self.__visualizer.add_updated_scene(lines=LinesCollection([line]))
                 self.__visualizer.update_last_scene(rects=regions + RectsCollection([self.region]))
             if pt in self.region:
                 result.append(pt)
-                if visualization:
+                if self.__show_visualization:
                     self.__visualizer.update_last_scene(points=self.__visualizer.last_scene.points +
                                                         PointsCollection([pt.__copy__()], color=Color.BLACK))
-            result += self.__build(LT, depth + 1, visualization, upper_end=upper_end, lower_end=lower_end, right_end=pt.x,
+            result += self.__build(LT, depth + 1, upper_end=upper_end, lower_end=lower_end, right_end=pt.x,
                                 left_end=left_end)
-            result += self.__build(RT, depth + 1, visualization, upper_end=upper_end, lower_end=lower_end, left_end=pt.x,
+            result += self.__build(RT, depth + 1, upper_end=upper_end, lower_end=lower_end, left_end=pt.x,
                                  right_end=right_end)
         return result
 
@@ -190,9 +194,11 @@ class KDTree:
     def region(self):
         return self.__region
 
-    def build(self, visualization=True):
+    def build(self):
         self.__visualizer.add_scene(points=self.points,
                                     lines=self.__visualizer.lines,
                                     rects=RectsCollection([self.region]))
-        result = self.__build(self.__points, visualization=visualization)
+        result = self.__build(self.__points)
+        if not self.__show_visualization:
+            self.__visualizer.add_updated_scene(PointsCollection(result, color=Color.BLACK))
         return result
