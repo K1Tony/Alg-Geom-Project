@@ -3,7 +3,7 @@ from Assets.Scene import Scene
 from Assets.shapesCollections import Point, PointsCollection, LinesCollection, Rectangle, RectsCollection, Line
 from Assets.Color import Color
 from Assets.Button import Button
-import numpy as np
+from random import uniform
 
 pg.init()
 
@@ -70,7 +70,7 @@ class Visualizer:
                    font=self.font, callback=lambda: self.__set_onclick(self.__add_point_onclick)),
             "Add Region": Button(self.height // self.__BUTTON_COUNT, 0, self.control_panel_width,
                    self.height // self.__BUTTON_COUNT, border_color=Color.BLACK,
-                   text="Add region", font=self.font, callback=lambda: self.__set_onclick(self.__add_region_onclick)),
+                   text="Add Region", font=self.font, callback=lambda: self.__set_onclick(self.__add_region_onclick)),
             "Clear area": Button(2 * self.height // self.__BUTTON_COUNT, 0, self.control_panel_width,
                                  self.height // self.__BUTTON_COUNT, border_color=Color.BLACK,
                                  text="Clear area", font=self.font, callback=self.__clear_area),
@@ -242,7 +242,8 @@ class Visualizer:
 
         for text, button in self.__buttons.items():
             self.draw_rectangle(button)
-            self.__window.blit(button.text_to_draw, button.topleft)
+            for txt, pos in zip(button.text_to_draw, button.text_positions):
+                self.__window.blit(txt, pos)
         self.draw_rectangle(self.__search_region)
         pg.draw.line(self.__window, Color.BLACK, (self.control_panel_width, 0), (self.control_panel_width, self.height),
                      width=6)
@@ -364,7 +365,7 @@ class Visualizer:
         if bound_y is None: bound_y = 0, self.height
         bound_y = max(0, bound_y[0]), min(self.height, bound_y[1])
         points = [
-            Point(np.random.uniform(*bound_x), np.random.uniform(*bound_y), self.__point_radius,
+            Point(uniform(*bound_x), uniform(*bound_y), self.__point_radius,
                   color) for _ in range(point_count)
         ]
         return PointsCollection(points)
@@ -375,8 +376,9 @@ class Visualizer:
     def add_button(self, text: str, key: str, function_callback):
         self.__BUTTON_COUNT += 1
         for i, button in self.__buttons.items():
-            self.__buttons[i].height *= (self.__BUTTON_COUNT - 1) / self.__BUTTON_COUNT
-            self.__buttons[i].y *= (self.__BUTTON_COUNT - 1) / self.__BUTTON_COUNT
+            self.__buttons[i] = button.resized_copy(button.y * (self.__BUTTON_COUNT - 1) / self.__BUTTON_COUNT,
+                                                    button.x, button.width,
+                                                    button.height * (self.__BUTTON_COUNT - 1) / self.__BUTTON_COUNT)
         self.__buttons[key] = \
             Button(self.height - self.height // self.__BUTTON_COUNT, 0, self.control_panel_width,
                    self.height // self.__BUTTON_COUNT,
