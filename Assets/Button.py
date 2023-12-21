@@ -11,7 +11,7 @@ class Button(Rectangle):
                  border_color: tuple[int, int, int] = Color.RED, font_color: tuple[int, int, int] = Color.BLACK,
                  hover_font_color: tuple[int, int, int] = Color.BLUE, hover_fill_color: tuple[int, int, int] = Color.CYAN,
                  click_font_color: tuple[int, int, int] = Color.WHITE, click_fill_color: tuple[int, int, int] = Color.RED,
-                 alpha: int = 255, text: str = '', font=None, callback=None):
+                 alpha: int = 255, text: str = '', font: pg.font.Font = None, callback=None):
         super(Button, self).__init__(top, left, width, height, fill_color, border_width, border_color, alpha)
         self.text = text
         self.text_to_draw = font.render(text, 1, font_color)
@@ -60,3 +60,5 @@ class Button(Rectangle):
         self.__active = False
         self.alpha = 100
         self.text_to_draw.set_alpha(self.alpha)
+        self.color = self.__base_fill_color
+        self.font_color = self.__base_font_color

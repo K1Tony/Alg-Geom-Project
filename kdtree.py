@@ -27,8 +27,8 @@ def median(T, key):
 
 
 class _KDTreeNode:
-    def __init__(self, point, line=None, region=None, left=None, right=None, parent=None):
-        self.__point = point
+    def __init__(self, points, line=None, region=None, left=None, right=None, parent=None):
+        self.__points = points
         self.__line = line
         self.__region = region
         self.__left = left
@@ -36,8 +36,8 @@ class _KDTreeNode:
         self.__parent = parent
 
     @property
-    def point(self):
-        return self.__point
+    def points(self):
+        return self.__points
 
     @property
     def line(self):
@@ -83,7 +83,11 @@ class KDTree:
 
         self.__state = 0
 
-        self.__visualizer.add_button(self.__message, self.__onclick)
+        self.__play_button_index = self.__visualizer.BUTTON_COUNT
+
+        self.__button_key = "KDTREE"
+
+        self.__visualizer.add_button("Build KD-Tree", self.__button_key, self.build)
         self.__visualizer.add_repeatable(self.__get_data_from_visualizer)
 
     def __get_data_from_visualizer(self):
@@ -100,12 +104,32 @@ class KDTree:
         if lower_end is None: lower_end = self.__visualizer.height
         region = Rectangle(upper_end, left_end, right_end - left_end, lower_end - upper_end, fill_color=Color.BLUE,
                            alpha=100)
-        if len(points) < 1:
-            return None
-        if len(points) == 1:
+        if len(points) < 1 or not self.__intersects(region):
+            return []
+        if region in self.region:
             region.color = Color.PURPLE
-            return _KDTreeNode(points[0], region=region, left=None, right=None)
+            if visualization:
+                copied_points = PointsCollection(list(map(lambda point: point.__copy__(), points)), color=Color.BLACK)
+                self.__visualizer.add_scene(
+                    points=self.__visualizer.last_scene.points + copied_points,
+                    lines=self.__visualizer.last_scene.lines,
+                    rects=RectsCollection([self.region, region])
+                )
+            return points
+        if len(points) == 1:
+            if points[0] in self.region:
+                if visualization:
+                    copied_points = PointsCollection(list(map(lambda point: point.__copy__(), points)),
+                                                     color=Color.BLACK)
+                    self.__visualizer.add_scene(
+                        points=self.__visualizer.last_scene.points + copied_points,
+                        lines=self.__visualizer.last_scene.lines,
+                        rects=RectsCollection([self.region, region])
+                    )
+                return points
+            return []
         width = 2 if self.__MAX_WIDTH - depth < 2 else self.__MAX_WIDTH - depth
+        result = []
         if depth % 2 == 1:
             pt = median(points, key=lambda point: point.y)
             i = points.index(pt)
@@ -120,9 +144,14 @@ class KDTree:
             if visualization:
                 self.__visualizer.add_updated_scene(lines=LinesCollection([line]))
                 self.__visualizer.update_last_scene(rects=regions + RectsCollection([self.region]))
-            left = self.__build(LT, depth + 1, visualization, upper_end=upper_end, lower_end=pt.y, left_end=left_end,
+            if pt in self.region:
+                result.append(pt)
+                if visualization:
+                    self.__visualizer.update_last_scene(points=self.__visualizer.last_scene.points +
+                                                        PointsCollection([pt.__copy__()], color=Color.BLACK))
+            result += self.__build(LT, depth + 1, visualization, upper_end=upper_end, lower_end=pt.y, left_end=left_end,
                                 right_end=right_end)
-            right = self.__build(RT, depth + 1, visualization, upper_end=pt.y, lower_end=lower_end, left_end=left_end,
+            result += self.__build(RT, depth + 1, visualization, upper_end=pt.y, lower_end=lower_end, left_end=left_end,
                                  right_end=right_end)
         else:
             pt = median(points, key=lambda point: point.x)
@@ -138,44 +167,16 @@ class KDTree:
             if visualization:
                 self.__visualizer.add_updated_scene(lines=LinesCollection([line]))
                 self.__visualizer.update_last_scene(rects=regions + RectsCollection([self.region]))
-            left = self.__build(LT, depth + 1, visualization, upper_end=upper_end, lower_end=lower_end, right_end=pt.x,
+            if pt in self.region:
+                result.append(pt)
+                if visualization:
+                    self.__visualizer.update_last_scene(points=self.__visualizer.last_scene.points +
+                                                        PointsCollection([pt.__copy__()], color=Color.BLACK))
+            result += self.__build(LT, depth + 1, visualization, upper_end=upper_end, lower_end=lower_end, right_end=pt.x,
                                 left_end=left_end)
-            right = self.__build(RT, depth + 1, visualization, upper_end=upper_end, lower_end=lower_end, left_end=pt.x,
+            result += self.__build(RT, depth + 1, visualization, upper_end=upper_end, lower_end=lower_end, left_end=pt.x,
                                  right_end=right_end)
-
-        return _KDTreeNode(pt, line, region, left, right)
-
-    def __get_leaves(self, node: _KDTreeNode, leaves):
-        if node is None:
-            return
-        if node.is_leaf():
-            leaves.append(node)
-            return
-        self.__get_leaves(node.left, leaves)
-        self.__get_leaves(node.right, leaves)
-
-    def __search(self, node: _KDTreeNode, result, result_color: tuple[int, int, int] = Color.BLACK, visualization: bool = True):
-        if node is None:
-            return
-        if visualization:
-            self.__visualizer.add_scene(self.points + PointsCollection(result, color=result_color),
-                                        self.__visualizer.last_scene.lines,
-                                        RectsCollection([node.region, self.region]))
-        if node.is_leaf() and node.point in self.region:
-            if visualization:
-                self.__visualizer.add_updated_scene(points=PointsCollection([node.point.__copy__()], color=result_color),
-                                                    rects=RectsCollection([node.region], color=Color.PURPLE, alpha=50))
-            result.append(node.point.__copy__())
-            return
-        if node.left is not None:
-            if self.__intersects(node.left.region):
-                self.__search(node.left, visualization=visualization, result=result)
-        if node.right is not None:
-            if self.__intersects(node.right.region):
-                self.__search(node.right, visualization=visualization, result=result)
-
-    def __collapse(self):
-        self.__visualizer.clear_scenes()
+        return result
 
     @property
     def visualizer(self):
@@ -189,30 +190,9 @@ class KDTree:
     def region(self):
         return self.__region
 
-    @property
-    def __message(self):
-        return "Create KD-Tree" if self.__state == 0 else "Search KD-Tree" if self.__state == 1 else "Collapse KD-Tree"
-
-    @property
-    def __onclick(self):
-        return self.build if self.__state == 0 else self.search if self.__state == 1 else self.collapse
-
     def build(self, visualization=True):
         self.__visualizer.add_scene(points=self.points,
                                     lines=self.__visualizer.lines,
                                     rects=RectsCollection([self.region]))
-        self.__root = self.__build(self.__points, visualization=visualization)
-        self.__state = 1
-        self.visualizer.update_button(5, self.__message, self.__onclick)
-
-    def search(self, visualization=True):
-        result = []
-        self.__search(self.__root, visualization=visualization, result=result)
-        self.__state = 2
-        self.visualizer.update_button(5, self.__message, self.__onclick)
+        result = self.__build(self.__points, visualization=visualization)
         return result
-
-    def collapse(self):
-        self.__collapse()
-        self.__state = 0
-        self.visualizer.update_button(5, self.__message, self.__onclick)
