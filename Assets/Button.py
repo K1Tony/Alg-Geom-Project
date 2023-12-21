@@ -28,8 +28,14 @@ class Button(Rectangle):
         self.__click_font_color = click_font_color
         self.__click_fill_color = click_fill_color
 
+        self.__active = True
+
+    @property
+    def active(self):
+        return self.__active
+
     def click(self):
-        if self.callback is None: return
+        if self.callback is None or not self.__active: return
         self.callback()
 
     def update_text(self, text):
@@ -37,9 +43,20 @@ class Button(Rectangle):
         self.text_to_draw = self.font.render(text, 1, self.font_color)
 
     def highlight_on_hover(self, pos):
+        if not self.__active: return
         if pos not in self:
             self.font_color = self.__base_font_color
             self.color = self.__base_fill_color
         else:
             self.font_color = self.__hover_font_color
             self.color = self.__hover_fill_color
+
+    def activate(self):
+        self.__active = True
+        self.alpha = 255
+        self.text_to_draw.set_alpha(self.alpha)
+
+    def deactivate(self):
+        self.__active = False
+        self.alpha = 100
+        self.text_to_draw.set_alpha(self.alpha)

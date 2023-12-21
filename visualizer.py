@@ -70,10 +70,14 @@ class Visualizer:
                    text=self.toggle, font=self.font, callback=lambda: self.__set_opposite_toggle()),
             Button(3 * self.height // 5, 0, self.control_panel_width, self.height // 5, border_color=Color.BLACK,
                    text="Random Points", font=self.font, callback=lambda: self.add_points(
-                    self.generate_random_points()))
+                    self.generate_random_points())),
+            Button(4 * self.height // 5, 0, self.control_panel_width, self.height // 5, border_color=Color.BLACK,
+                   text="Replay", font=self.font, callback=self.__replay)
         ]
 
         self.__key_bindings = []
+
+        self.__repeats = []
 
         self.__BOUNDING_RECT = Rectangle(0, self.control_panel_width, self.width - self.control_panel_width, self.height)
 
@@ -161,7 +165,7 @@ class Visualizer:
                          width=rectangle.border_width)
             pg.draw.line(self.__window, rectangle.border_color, rectangle.bottomleft, rectangle.topleft,
                          width=rectangle.border_width)
-        elif rectangle.alpha > 0:
+        elif rectangle.alpha < 255:
             surface = pg.Surface(rectangle.size)
             surface.fill(rectangle.color)
             surface.set_alpha(rectangle.alpha)
@@ -184,9 +188,11 @@ class Visualizer:
 
     def set_manual(self):
         self.__TOGGLE = Toggle.MANUAL
+        self.__buttons[4].deactivate()
 
     def set_automatic(self):
         self.__TOGGLE = Toggle.AUTOMATIC
+        self.__buttons[4].activate()
 
     def show_figures_with_points(self):
         self.__SHOW_FIGURES_WITH_POINTS = True
@@ -195,7 +201,7 @@ class Visualizer:
         self.__SHOW_FIGURES_WITH_POINTS = False
 
     def __set_background(self):
-        if self.__TOGGLE == Toggle.AUTOMATIC:
+        if self.__TOGGLE == Toggle.AUTOMATIC and self.__scene_played < len(self.__scenes):
             self.__WAIT += 1
             if self.__WAIT >= self.__SCENE_DELAY:
                 self.__WAIT = -1
@@ -239,11 +245,15 @@ class Visualizer:
     def __auto_set_scene(self):
         if len(self.__scenes) > 0:
             self.__scene_played += 1
-            self.__scene_played %= len(self.__scenes)
+            if self.__scene_played == len(self.__scenes):
+                return
             scene = self.__scenes[self.__scene_played]
             self.__points = scene.points
             self.__lines = scene.lines
             self.__rects = scene.rects
+
+    def __replay(self):
+        self.__scene_played = -1
 
     def __set_onclick(self, function_callback):
         self.__onclick = function_callback
@@ -331,7 +341,7 @@ class Visualizer:
         ]
         return PointsCollection(points)
 
-    def insert_key_binding(self, key: int, callback):
+    def add_key_binding(self, key: int, callback):
         self.__key_bindings.append((key, callback))
 
     def add_button(self, text: str, function_callback):
@@ -347,6 +357,12 @@ class Visualizer:
             Button(last.y + last.height, 0, self.control_panel_width, self.height // n,
                    border_color=Color.BLACK, text=text, font=self.font, callback=function_callback)
         )
+
+    def add_repeatable(self, function_callback):
+        self.__repeats.append(function_callback)
+
+    def remove_repeatable(self, function_callback):
+        self.__repeats.remove(function_callback)
 
     def update_button(self, i: int, text: str = '', function_callback=None):
         self.__buttons[i].update_text(text)
@@ -381,6 +397,9 @@ class Visualizer:
 
             for button in self.__buttons:
                 button.highlight_on_hover(pg.mouse.get_pos())
+
+            for repeat in self.__repeats:
+                repeat()
 
             self.__window.fill(self.color)
             self.__set_background()

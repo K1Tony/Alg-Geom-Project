@@ -84,7 +84,7 @@ class KDTree:
         self.__state = 0
 
         self.__visualizer.add_button(self.__message, self.__onclick)
-        self.__visualizer.add_button("Save changes", self.__get_data_from_visualizer)
+        self.__visualizer.add_repeatable(self.__get_data_from_visualizer)
 
     def __get_data_from_visualizer(self):
         self.__points = self.__visualizer.points
@@ -203,16 +203,16 @@ class KDTree:
                                     rects=RectsCollection([self.region]))
         self.__root = self.__build(self.__points, visualization=visualization)
         self.__state = 1
-        self.visualizer.update_button(4, self.__message, self.__onclick)
+        self.visualizer.update_button(5, self.__message, self.__onclick)
 
     def search(self, visualization=True):
         result = []
         self.__search(self.__root, visualization=visualization, result=result)
         self.__state = 2
-        self.visualizer.update_button(4, self.__message, self.__onclick)
+        self.visualizer.update_button(5, self.__message, self.__onclick)
         return result
 
     def collapse(self):
         self.__collapse()
         self.__state = 0
-        self.visualizer.update_button(4, self.__message, self.__onclick)
+        self.visualizer.update_button(5, self.__message, self.__onclick)
