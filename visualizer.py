@@ -26,18 +26,18 @@ class Toggle:
 class Visualizer:
 
     __SCENE_DELAY = Time.SECOND
-    __TOGGLE = Toggle.AUTOMATIC
+    __TOGGLE = Toggle.MANUAL
     __NEXT_SCENE = 0
     __SHOW_FIGURES_WITH_POINTS = False
     __WAIT = -1
     __CLICK_DELAY = 10 * Time.MILLISECOND
     __CLICK_WAIT = -1
 
-    __BUTTON_COUNT = 6
+    __BUTTON_COUNT = 7
 
     def __init__(self, size: pg.Vector2 = None,
                  color: tuple[int, int, int] = Color.WHITE,
-                 flags: int = 0):
+                 flags: int = 0, show_window: bool = True):
         if size is None:
             screen_width, screen_height = pg.display.get_desktop_sizes()[0]
             screen_height -= 50
@@ -54,8 +54,9 @@ class Visualizer:
         self.__scene_played = -1
         self.__scene_pauses = {}
 
-        self.__window = pg.display.set_mode(self.__size, flags=flags)
-        self.__point_radius = self.__size[1] // 100
+        if show_window: self.__window = pg.display.set_mode(self.__size, flags=flags)
+        else: self.__window = None
+        self.__point_radius = self.__size[1] // 300
 
         self.__onclick = None
 
@@ -68,27 +69,30 @@ class Visualizer:
             "Add Point": Button(0, 0, self.control_panel_width, self.height // self.__BUTTON_COUNT,
                    border_color=Color.BLACK, text="Add Point",
                    font=self.font, callback=lambda: self.__set_onclick(self.__add_point_onclick)),
-            "Add Region": Button(self.height // self.__BUTTON_COUNT, 0, self.control_panel_width,
+            "Random Points": Button(self.height // self.__BUTTON_COUNT, 0, self.control_panel_width,
+                                    self.height // self.__BUTTON_COUNT, border_color=Color.BLACK,
+                                    text="Random Points", font=self.font, callback=lambda: self.add_points(
+                    self.generate_random_points())),
+            "Add Region": Button(2 * self.height // self.__BUTTON_COUNT, 0, self.control_panel_width,
                    self.height // self.__BUTTON_COUNT, border_color=Color.BLACK,
                    text="Add Region", font=self.font, callback=lambda: self.__set_onclick(self.__add_region_onclick)),
-            "Clear area": Button(2 * self.height // self.__BUTTON_COUNT, 0, self.control_panel_width,
+            "Clear area": Button(3 * self.height // self.__BUTTON_COUNT, 0, self.control_panel_width,
                                  self.height // self.__BUTTON_COUNT, border_color=Color.BLACK,
                                  text="Clear area", font=self.font, callback=self.__clear_area),
-            "Toggle": Button(3 * self.height // self.__BUTTON_COUNT, 0, self.control_panel_width,
+            "Toggle": Button(4 * self.height // self.__BUTTON_COUNT, 0, self.control_panel_width,
                    self.height // self.__BUTTON_COUNT, border_color=Color.BLACK,
                    text=self.toggle, font=self.font, callback=lambda: self.__set_opposite_toggle()),
-            "Random Points": Button(4 * self.height // self.__BUTTON_COUNT, 0, self.control_panel_width,
-                   self.height // self.__BUTTON_COUNT, border_color=Color.BLACK,
-                   text="Random Points", font=self.font, callback=lambda: self.add_points(
-                    self.generate_random_points())),
             "Replay": Button(5 * self.height // self.__BUTTON_COUNT, 0, self.control_panel_width,
                    self.height // self.__BUTTON_COUNT, border_color=Color.BLACK,
-                   text="Replay", font=self.font, callback=self.__replay)
+                   text="Replay", font=self.font, callback=self.__replay),
+            "Clear Scenes": Button(6 * self.height // self.__BUTTON_COUNT, 0, self.control_panel_width,
+                                   self.height // self.__BUTTON_COUNT, border_color=Color.BLACK,
+                                   text="Clear Scenes", font=self.font, callback=self.clear_scenes_and_return)
         }
 
         self.__key_bindings = []
 
-        self.__repeats = []
+        self.__repeats = set()
 
         self.__BOUNDING_RECT = Rectangle(0, self.control_panel_width, self.width - self.control_panel_width, self.height)
 
@@ -121,15 +125,21 @@ class Visualizer:
 
     @property
     def width(self):
-        return self.__window.get_width()
+        return self.__size[0]
 
     @property
     def height(self):
-        return self.__window.get_height()
+        return self.__size[1]
 
     @property
     def point_radius(self):
         return self.__point_radius
+
+    def set_point_radius(self, fraction: int = None, raw_pixels: int | float = None):
+        if fraction is not None:
+            self.__point_radius = self.__size[1] // fraction
+        elif raw_pixels is not None:
+            self.__point_radius = raw_pixels
 
     @color.setter
     def color(self, new_color: tuple[int, int, int]):
@@ -141,7 +151,24 @@ class Visualizer:
 
     @property
     def last_scene(self):
+        if not self.__scenes: return
         return self.__scenes[-1]
+
+    @property
+    def first_scene(self):
+        if not self.__scenes: return
+        return self.__scenes[0]
+
+    @property
+    def scene_played(self):
+        return self.__scene_played
+
+    def set_scene_played(self, scene_index: int = -1):
+        if len(self.scenes) == 0: return
+        if scene_index < 0:
+            self.set_scene_played(scene_index + len(self.scenes))
+        if 0 <= scene_index < len(self.scenes):
+            self.__scene_played = scene_index
 
     @property
     def control_panel_width(self):
@@ -172,6 +199,7 @@ class Visualizer:
         return self.__BUTTON_COUNT
 
     def draw_rectangle(self, rectangle: Rectangle):
+        if self.__window is None: return
         border_rect = pg.Rect(rectangle.x - rectangle.border_width, rectangle.y - rectangle.border_width,
                               rectangle.w + rectangle.border_width + rectangle.border_width,
                               rectangle.h + rectangle.border_width + rectangle.border_width)
@@ -216,7 +244,14 @@ class Visualizer:
     def show_figures_without_points(self):
         self.__SHOW_FIGURES_WITH_POINTS = False
 
+    def clear_scenes_and_return(self):
+        self.__scene_played = 0
+        self.__NEXT_SCENE = True
+        self.__set_scene()
+        self.clear_scenes()
+
     def __set_background(self):
+        if self.__window is None: return
         if self.__TOGGLE == Toggle.AUTOMATIC and self.__scene_played < len(self.__scenes):
             self.__WAIT += 1
             if self.__WAIT >= self.__SCENE_DELAY:
@@ -264,7 +299,6 @@ class Visualizer:
             if self.__scene_played == len(self.__scenes) - 1:
                 return
             if self.__scene_played in self.__scene_pauses:
-                self.__buttons["Continue"].activate()
                 return
             self.__scene_played += 1
             scene = self.__scenes[self.__scene_played]
@@ -283,6 +317,8 @@ class Visualizer:
         self.scenes.clear()
         self.__scene_played = -1
 
+    def clear(self): self.__clear_area()
+
     def __set_onclick(self, function_callback):
         self.__onclick = function_callback
 
@@ -298,6 +334,7 @@ class Visualizer:
         elif len(self.__new_rect_onclick) == 1:
             self.__new_rect_onclick.append(pos)
             self.__search_region = Rectangle.form(*self.__new_rect_onclick, fill_color=Color.GREEN, alpha=50)
+            self.__rects = RectsCollection()
             self.remove_points(PointsCollection(self.__new_rect_onclick))
         else:
             self.__search_region = Rectangle()
@@ -366,7 +403,8 @@ class Visualizer:
         if bound_y is None: bound_y = 0, self.height
         bound_y = max(0, bound_y[0]), min(self.height, bound_y[1])
         points = [
-            Point(uniform(*bound_x), uniform(*bound_y), self.__point_radius,
+            Point(uniform(*bound_x),
+                  uniform(*bound_y), self.__point_radius,
                   color) for _ in range(point_count)
         ]
         return PointsCollection(points)
@@ -389,10 +427,11 @@ class Visualizer:
         self.__buttons.pop(text)
 
     def add_repeatable(self, function_callback):
-        self.__repeats.append(function_callback)
+        self.__repeats.add(function_callback)
 
     def remove_repeatable(self, function_callback):
-        self.__repeats.remove(function_callback)
+        if function_callback in self.__repeats:
+            self.__repeats.remove(function_callback)
 
     def clear_repeatable(self):
         self.__repeats.clear()

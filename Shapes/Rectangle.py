@@ -4,6 +4,9 @@ from Shapes.Point import Point
 
 
 class Rectangle(Rect):
+
+    __EPS = 10 ** -12
+
     def __init__(self, top: float = 0, left: float = 0, width: float = 0, height: float = 0,
                  fill_color: tuple[int, int, int] = Color.VOID, border_width: int = 3,
                  border_color: tuple[int, int, int] = Color.RED,
@@ -16,13 +19,15 @@ class Rectangle(Rect):
 
     def __contains__(self, item):
         if isinstance(item, tuple):
-            return self.x <= item[0] <= self.x + self.width and self.y <= item[1] <= self.y + self.height
+            return self.x - self.__EPS <= item[0] <= self.x + self.width + self.__EPS\
+                   and self.y - self.__EPS <= item[1] <= self.y + self.height + self.__EPS
         if isinstance(item, Point):
-            return self.x <= item.x - item.radius and item.x + item.radius <= self.x + self.width and\
-                   self.y <= item.y - item.radius and item.y + item.radius <= self.y + self.height
+            return item.tuple() in self
+
         if isinstance(item, Rectangle):
-            return self.x <= item.x and self.y <= item.y and self.x + self.width >= item.x + item.width and\
-                self.y + self.height >= item.y + item.height
+            return self.x - self.__EPS <= item.x and self.y - self.__EPS <= item.y and\
+                   self.x + self.width + self.__EPS >= item.x + item.width and\
+                self.y + self.height + self.__EPS >= item.y + item.height
         return False
 
     def __copy__(self):
