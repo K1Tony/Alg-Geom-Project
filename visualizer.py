@@ -40,7 +40,7 @@ class Visualizer:
                  flags: int = 0, show_window: bool = True):
         if size is None:
             screen_width, screen_height = pg.display.get_desktop_sizes()[0]
-            screen_height -= 50
+            screen_height -= 100
             size = screen_width, screen_height
         self.__size = size
         self.__color = color
@@ -52,7 +52,6 @@ class Visualizer:
 
         self.__scenes = []
         self.__scene_played = -1
-        self.__scene_pauses = {}
 
         if show_window: self.__window = pg.display.set_mode(self.__size, flags=flags)
         else: self.__window = None
@@ -66,27 +65,32 @@ class Visualizer:
         self.__search_region = Rectangle()
 
         self.__buttons = {
-            "Add Point": Button(0, 0, self.control_panel_width, self.height // self.__BUTTON_COUNT,
+            "Add Point": Button(0, 0, width=self.control_panel_width, height=self.height // self.__BUTTON_COUNT,
                    border_color=Color.BLACK, text="Add Point",
                    font=self.font, callback=lambda: self.__set_onclick(self.__add_point_onclick)),
             "Random Points": Button(self.height // self.__BUTTON_COUNT, 0, self.control_panel_width,
                                     self.height // self.__BUTTON_COUNT, border_color=Color.BLACK,
                                     text="Random Points", font=self.font, callback=lambda: self.add_points(
                     self.generate_random_points())),
-            "Add Region": Button(2 * self.height // self.__BUTTON_COUNT, 0, self.control_panel_width,
-                   self.height // self.__BUTTON_COUNT, border_color=Color.BLACK,
+            "Add Region": Button(top=2 * self.height // self.__BUTTON_COUNT, left=0,
+                                 width=self.control_panel_width,
+                   height=self.height // self.__BUTTON_COUNT, border_color=Color.BLACK,
                    text="Add Region", font=self.font, callback=lambda: self.__set_onclick(self.__add_region_onclick)),
-            "Clear area": Button(3 * self.height // self.__BUTTON_COUNT, 0, self.control_panel_width,
-                                 self.height // self.__BUTTON_COUNT, border_color=Color.BLACK,
+            "Clear area": Button(top=3 * self.height // self.__BUTTON_COUNT, left=0,
+                                 width=self.control_panel_width,
+                                 height=self.height // self.__BUTTON_COUNT, border_color=Color.BLACK,
                                  text="Clear area", font=self.font, callback=self.__clear_area),
-            "Toggle": Button(4 * self.height // self.__BUTTON_COUNT, 0, self.control_panel_width,
-                   self.height // self.__BUTTON_COUNT, border_color=Color.BLACK,
+            "Toggle": Button(top=4 * self.height // self.__BUTTON_COUNT, left=0,
+                             width=self.control_panel_width,
+                   height=self.height // self.__BUTTON_COUNT, border_color=Color.BLACK,
                    text=self.toggle, font=self.font, callback=lambda: self.__set_opposite_toggle()),
-            "Replay": Button(5 * self.height // self.__BUTTON_COUNT, 0, self.control_panel_width,
-                   self.height // self.__BUTTON_COUNT, border_color=Color.BLACK,
+            "Replay": Button(top=5 * self.height // self.__BUTTON_COUNT, left=0,
+                             width=self.control_panel_width,
+                   height=self.height // self.__BUTTON_COUNT, border_color=Color.BLACK,
                    text="Replay", font=self.font, callback=self.__replay),
-            "Clear Scenes": Button(6 * self.height // self.__BUTTON_COUNT, 0, self.control_panel_width,
-                                   self.height // self.__BUTTON_COUNT, border_color=Color.BLACK,
+            "Clear Scenes": Button(top=6 * self.height // self.__BUTTON_COUNT, left=0,
+                                   width=self.control_panel_width,
+                                   height=self.height // self.__BUTTON_COUNT, border_color=Color.BLACK,
                                    text="Clear Scenes", font=self.font, callback=self.clear_scenes_and_return)
         }
 
@@ -191,7 +195,15 @@ class Visualizer:
         return self.__search_region
 
     @search_region.setter
-    def search_region(self, rect):
+    def search_region(self, rect: Rectangle):
+        if rect.left < self.control_panel_width:
+            rect.left = self.control_panel_width
+        if rect.top < 0:
+            rect.top = 0
+        if rect.right > self.width:
+            rect.right = self.width
+        if rect.bottom > self.height:
+            rect.bottom = self.height
         self.__search_region = rect
 
     @property
@@ -200,9 +212,9 @@ class Visualizer:
 
     def draw_rectangle(self, rectangle: Rectangle):
         if self.__window is None: return
-        border_rect = pg.Rect(rectangle.x - rectangle.border_width, rectangle.y - rectangle.border_width,
-                              rectangle.w + rectangle.border_width + rectangle.border_width,
-                              rectangle.h + rectangle.border_width + rectangle.border_width)
+        border_rect = pg.Rect(rectangle.left - rectangle.border_width, rectangle.top - rectangle.border_width,
+                              rectangle.width + rectangle.border_width + rectangle.border_width,
+                              rectangle.height + rectangle.border_width + rectangle.border_width)
         if rectangle.color == Color.VOID:
             pg.draw.line(self.__window, rectangle.border_color, rectangle.topleft, rectangle.topright,
                          width=rectangle.border_width)
@@ -219,7 +231,8 @@ class Visualizer:
             self.__window.blit(surface, rectangle.topleft)
         else:
             pg.draw.rect(self.__window, rectangle.border_color, border_rect, width=rectangle.border_width)
-            pg.draw.rect(self.__window, rectangle.color, rectangle)
+            pg.draw.rect(self.__window, rectangle.color, pg.Rect(rectangle.left, rectangle.top,
+                                                                 rectangle.width, rectangle.height))
 
     def set_scene_delay(self, delay: int):
         if delay < 0: delay = 0
@@ -343,20 +356,15 @@ class Visualizer:
 
     def add_points(self, points: PointsCollection):
         if points is None: return
-        for i, point in enumerate(points.items):
-            if point.x - point.diameter < self.control_panel_width: point.x = self.control_panel_width + point.radius
-            elif point.x + point.radius > self.width: point.x = self.width - point.radius
-            if point.y - point.radius < 0: point.y = point.radius
-            elif point.y + point.radius > self.height: point.y = self.height - point.radius
-        self.__points += points
+        self.__points += points.__copy__()
 
     def add_lines(self, lines: LinesCollection):
         if lines is None: return
-        self.__lines += lines
+        self.__lines += lines.__copy__()
 
     def add_rects(self, rects: RectsCollection):
         if rects is None: return
-        self.__rects += rects
+        self.__rects += rects.__copy__()
 
     def remove_points(self, points: PointsCollection):
         self.__points -= points
@@ -415,8 +423,8 @@ class Visualizer:
     def add_button(self, text: str, key: str, function_callback):
         self.__BUTTON_COUNT += 1
         for i, button in self.__buttons.items():
-            self.__buttons[i] = button.resized_copy(button.y * (self.__BUTTON_COUNT - 1) / self.__BUTTON_COUNT,
-                                                    button.x, button.width,
+            self.__buttons[i] = button.resized_copy(button.top * (self.__BUTTON_COUNT - 1) / self.__BUTTON_COUNT,
+                                                    button.left, button.width,
                                                     button.height * (self.__BUTTON_COUNT - 1) / self.__BUTTON_COUNT)
         self.__buttons[key] = \
             Button(self.height - self.height // self.__BUTTON_COUNT, 0, self.control_panel_width,
@@ -435,23 +443,6 @@ class Visualizer:
 
     def clear_repeatable(self):
         self.__repeats.clear()
-
-    def add_pause(self, i: int, message: str):
-        self.__scene_pauses[i] = message
-
-    def remove_pause(self, i: int = None, message: str = None):
-        if i is None and message is None:
-            return
-        if i is None:
-            for key, value in self.__scene_pauses:
-                if value == message:
-                    self.__scene_pauses.pop(key)
-                    return
-        if i in self.__scene_pauses:
-            self.__scene_pauses.pop(i)
-
-    def delete_pauses(self):
-        self.__scene_pauses = {}
 
     def update_button(self, key: str, text: str = '', function_callback=None):
         self.__buttons[key].update_text(text)

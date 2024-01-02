@@ -26,7 +26,6 @@ def median(T, key):
     return quick_select(T, 0, len(T) - 1, len(T) // 2, key)
 
 
-
 class _KDTreeNode:
     def __init__(self, points, region=None, left=None, right=None, parent=None):
         self.__points = points
@@ -71,41 +70,38 @@ class KDTree:
     __MAX_WIDTH = 6
 
     def __init__(self, points: PointsCollection = PointsCollection(), region: Rectangle | None = None,
-                 visualizer: Visualizer | None = Visualizer(), show_visualization: bool = True):
+                 visualizer: Visualizer | None = None, show_visualization: bool = True):
         self.__points = points
         self.__visualizer = visualizer
-        self.__region = region if region is not None else Rectangle()
+        self.__region = region
         self.__root = None
 
         self.__show_visualization = show_visualization
 
-        self.__state = 0
-
-        self.__button_key = "KDTREE"
-        self.__search_key = "SEARCH"
-
-        self.__visualizer.add_button("Build KD-Tree", self.__button_key, self.build)
-        self.__visualizer.add_button("Search KD-Tree", self.__search_key, self.search)
-        self.__visualizer.add_repeatable(self.__get_data_from_visualizer)
+        if self.__show_visualization:
+            self.__button_key = "KDTREE"
+            self.__search_key = "SEARCH"
+            self.__visualizer.add_button("Build KD-Tree", self.__button_key, self.build)
+            self.__visualizer.add_button("Search KD-Tree", self.__search_key, self.search)
+            self.__visualizer.add_repeatable(self.__get_data_from_visualizer)
+            if len(self.points) > 0: self.__visualizer.add_points(self.__points)
+            if self.region is not None: self.__visualizer.search_region = region
 
     def __get_data_from_visualizer(self):
         self.__points = self.__visualizer.points
         self.__region = self.__visualizer.search_region
 
-    def __intersects(self, item: Rectangle):
-        return item.colliderect(self.region)
-
-    def __build(self, points, lines, depth=0, upper_end=None, lower_end=None, left_end=None, right_end=None):
-        if upper_end is None: upper_end = 0
-        if left_end is None: left_end = self.__visualizer.control_panel_width
-        if right_end is None: right_end = self.__visualizer.width
-        if lower_end is None: lower_end = self.__visualizer.height
+    def __build(self, points, depth=0, upper_end=None, lower_end=None, left_end=None, right_end=None):
+        if len(points) < 1:
+            return None
+        if upper_end is None: upper_end = min(points, key=lambda point: point.y).y
+        if left_end is None: left_end = min(points).x
+        if right_end is None: right_end = max(points).x
+        if lower_end is None: lower_end = max(points, key=lambda point: point.y).y
         region = Rectangle(upper_end, left_end,
                            right_end - left_end,
                            lower_end - upper_end, fill_color=Color.BLUE,
                            alpha=100)
-        if len(points) < 1:
-            return None
         if len(points) == 1:
             return _KDTreeNode(points, region=region)
         width = 2 if self.__MAX_WIDTH - depth < 2 else self.__MAX_WIDTH - depth
@@ -114,105 +110,75 @@ class KDTree:
             i = points.index(pt)
             LT = points[:i]
             RT = points[i:]
-            line = Line(Point(left_end, pt.y, self.__visualizer.point_radius),
-                        Point(right_end, pt.y, self.__visualizer.point_radius), color=Color.BLUE, width=width)
-            regions = RectsCollection([Rectangle(upper_end, left_end, right_end - left_end, pt.y - upper_end,
-                                                 fill_color=Color.GREEN, alpha=50),
-                                       Rectangle(pt.y, left_end, right_end - left_end, lower_end - pt.y,
-                                                 fill_color=Color.RED, alpha=50)])
             if self.__show_visualization:
+                line = Line(Point(left_end, pt.y, 1),
+                            Point(right_end, pt.y, 1), color=Color.BLUE, width=width)
+                regions = RectsCollection([Rectangle(upper_end, left_end, right_end - left_end, pt.y - upper_end,
+                                                     fill_color=Color.GREEN, alpha=50),
+                                           Rectangle(pt.y, left_end, right_end - left_end, lower_end - pt.y,
+                                                     fill_color=Color.RED, alpha=50)])
                 self.__visualizer.add_updated_scene(lines=LinesCollection([line]))
                 self.__visualizer.update_last_scene(rects=regions + RectsCollection([self.region]))
-            left = self.__build(LT, lines, depth + 1, upper_end=upper_end, lower_end=pt.y, left_end=left_end,
-                                right_end=right_end)
-            right = self.__build(RT, lines, depth + 1, upper_end=pt.y, lower_end=lower_end, left_end=left_end,
-                                 right_end=right_end)
+            left = self.__build(LT, depth + 1, upper_end=upper_end, lower_end=pt.y,
+                                left_end=left_end, right_end=right_end)
+            right = self.__build(RT, depth + 1, upper_end=pt.y, lower_end=lower_end,
+                                 left_end=left_end, right_end=right_end)
         else:
             pt = median(points, key=lambda point: point.x)
             i = points.index(pt)
             LT = points[:i]
             RT = points[i:]
-            line = Line(Point(pt.x, upper_end, self.__visualizer.point_radius),
-                        Point(pt.x, lower_end, self.__visualizer.point_radius), color=Color.BLUE, width=width)
-            regions = RectsCollection([Rectangle(upper_end, left_end, pt.x - left_end, lower_end - upper_end,
-                                                 fill_color=Color.GREEN, alpha=50),
-                                       Rectangle(upper_end, pt.x, right_end - pt.x, lower_end - upper_end,
-                                                 fill_color=Color.RED, alpha=50)])
             if self.__show_visualization:
+                line = Line(Point(pt.x, upper_end, 1),
+                            Point(pt.x, lower_end, 1), color=Color.BLUE, width=width)
+                regions = RectsCollection([Rectangle(upper_end, left_end, pt.x - left_end, lower_end - upper_end,
+                                                     fill_color=Color.GREEN, alpha=50),
+                                           Rectangle(upper_end, pt.x, right_end - pt.x, lower_end - upper_end,
+                                                     fill_color=Color.RED, alpha=50)])
                 self.__visualizer.add_updated_scene(lines=LinesCollection([line]))
                 self.__visualizer.update_last_scene(rects=regions + RectsCollection([self.region]))
-            left = self.__build(LT, lines, depth + 1, upper_end=upper_end, lower_end=lower_end, right_end=pt.x,
-                                left_end=left_end)
-            right = self.__build(RT, lines, depth + 1, upper_end=upper_end, lower_end=lower_end, left_end=pt.x,
-                                 right_end=right_end)
-        lines.append(line)
+
+            left = self.__build(LT, depth + 1, upper_end=upper_end, lower_end=lower_end,
+                                right_end=pt.x, left_end=left_end)
+            right = self.__build(RT, depth + 1, upper_end=upper_end, lower_end=lower_end,
+                                 right_end=right_end, left_end=pt.x)
         return _KDTreeNode(points, region, left, right)
 
-    def __build_tree(self, points, depth=0):
-        if len(points) < 1:
-            return None
-        if len(points) == 1:
-            return _KDTreeNode(...)
-        if depth % 2 == 0:
-            pt = median(points, key=lambda point: point.x)
-        else:
-            pt = median(points, key=lambda point: point.y)
-        i = points.index(pt)
-        LT, RT = points[:i], points[i:]
-        left_node = self.__build_tree(LT, depth + 1)
-        right_node = self.__build_tree(RT, depth + 1)
-        return _KDTreeNode(..., left=left_node, right=right_node)
-
-    def __search_tree(self, node: _KDTreeNode):
-
-        if node.is_leaf() or node.region in self.region:
-
-            return node.points
-
-        result = []
-
-        if self.region.colliderect(node.region):
-
-            result += self.__search_tree(node.left)
-            result += self.__search_tree(node.right)
-
-        return result
-
-    def __search(self, node: _KDTreeNode, search_region: Rectangle, result: list[Point]):
+    def __search(self, node: _KDTreeNode, result: list[Point]):
         if node is None:
             return
         if node.is_leaf():
-            if node.points[0] in search_region:
+            if node.points[0] in self.region:
                 result += node.points
                 if self.__show_visualization:
                     self.__visualizer.add_scene(points=self.__visualizer.points +
                                                 PointsCollection(result, color=Color.BLACK, copy=True),
                                                 lines=self.__visualizer.lines,
-                                                rects=RectsCollection([search_region]) +
+                                                rects=RectsCollection([self.region]) +
                                                 RectsCollection([node.region.__copy__()], color=Color.PURPLE))
             if self.__show_visualization:
                 self.__visualizer.add_scene(points=self.__visualizer.points +
                                             PointsCollection(result, color=Color.BLACK, copy=True),
                                             lines=self.__visualizer.lines,
-                                            rects=RectsCollection([search_region, node.region]))
+                                            rects=RectsCollection([self.region, node.region]))
             return
-        if node.region in search_region:
+        if node.region in self.region:
             result += node.points
             if self.__show_visualization:
                 self.__visualizer.add_scene(points=self.__visualizer.points +
                                             PointsCollection(result, color=Color.BLACK, copy=True),
                                             lines=self.__visualizer.lines,
-                                            rects=RectsCollection([search_region]) +
+                                            rects=RectsCollection([self.region]) +
                                             RectsCollection([node.region.__copy__()], color=Color.PURPLE))
             return
-        if search_region.colliderect(node.region):
+        if self.region.colliderect(node.region):
             if self.__show_visualization:
                 self.__visualizer.add_scene(points=self.__visualizer.points +
                                             PointsCollection(result, color=Color.BLACK, copy=True),
                                             lines=self.__visualizer.lines,
-                                            rects=RectsCollection([search_region, node.region]))
-            self.__search(node.left, search_region, result)
-            self.__search(node.right, search_region, result)
+                                            rects=RectsCollection([self.region, node.region]))
+            self.__search(node.left, result)
+            self.__search(node.right, result)
 
     @property
     def visualizer(self):
@@ -236,9 +202,7 @@ class KDTree:
             self.__visualizer.add_scene(points=self.points,
                                         lines=self.__visualizer.lines,
                                         rects=RectsCollection([self.region]))
-        lines = []
-        self.__root = self.__build(self.__points.items, lines)
-        return LinesCollection(lines)
+        self.__root = self.__build(self.__points.items)
 
     def search(self):
         result = []
@@ -246,7 +210,7 @@ class KDTree:
             first_scene = self.__visualizer.first_scene
             self.__visualizer.clear_scenes()
             self.__visualizer.add_scene(first_scene.points, first_scene.lines, first_scene.rects)
-        self.__search(self.__root, self.region, result)
+        self.__search(self.__root, result)
         if self.__show_visualization:
             self.__visualizer.add_scene(points=self.visualizer.last_scene.points,
                                         lines=self.visualizer.last_scene.lines,
@@ -257,3 +221,46 @@ class KDTree:
         if points is not None: self.__points = points
         if region is not None: self.__region = region
 
+
+class KDT:
+    def __init__(self, points, region: Rectangle):
+        self.points = points
+        self.region = region
+        self.bound = Rectangle(min(points, key=lambda p: p[1])[1], min(points, key=lambda p: p[0])[0],
+                               max(points, key=lambda p: p[0])[0], max(points, key=lambda p: p[1])[1])
+        self.root = self.build(self.points)
+
+    def build(self, points, depth=0):
+        if len(points) < 1:
+            return
+        top, bot = min(points, key=lambda point: point[1])[1], max(points, key=lambda point: point[1])[1]
+        left, right = min(points)[0], max(points)[0]
+        bound = Rectangle(top, left, right - left, bot - top)
+        if len(points) == 1:
+            return _KDTreeNode(points, bound)
+
+        if depth == 0:
+            pt = median(points, key=lambda point: point[0])
+        else:
+            pt = median(points, key=lambda point: point[1])
+        idx = points.index(pt)
+        left = self.build(points[:idx], depth + 1)
+        right = self.build(points[idx:], depth + 1)
+        return _KDTreeNode(points, bound, left, right)
+
+    def search_recursive(self, node: _KDTreeNode, result):
+        if node.is_leaf():
+            if node.points[0] in self.region:
+                result += node.points
+            return
+        if node.region in self.region:
+            result += node.points
+            return
+        if self.region.colliderect(node.region):
+            self.search_recursive(node.left, result)
+            self.search_recursive(node.right, result)
+
+    def search(self):
+        result = []
+        self.search_recursive(self.root, result)
+        return result

@@ -27,6 +27,9 @@ class Collection(ABC):
     def __setitem__(self, key, value):
         self.__items[key] = value
 
+    def __copy__(self):
+        return self.__class__(self.__items, self.color, True)
+
     def index(self, value):
         return self.__items.index(value)
 

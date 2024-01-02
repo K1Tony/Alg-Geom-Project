@@ -23,7 +23,7 @@ class Button(Rectangle):
         total_height = sum(map(lambda surface: surface.get_height(), self.text_to_draw))
         h = (self.height - total_height) / 2
         for txt in self.text_to_draw:
-            self.text_positions.append((self.x + (self.width - txt.get_width()) / 2, self.top + h))
+            self.text_positions.append((self.left + (self.width - txt.get_width()) / 2, self.top + h))
             h += txt.get_height()
 
         self.__base_font_color = font_color
@@ -84,7 +84,7 @@ class Button(Rectangle):
         self.color = self.__base_fill_color
         self.font_color = self.__base_font_color
 
-    def wrap_text(self, font: pg.font.Font, width: int, color: tuple[int, int, int] = None, background=None):
+    def wrap_text(self, font: pg.font.Font, width, color: tuple[int, int, int] = None, background=None):
         if color is None: color = self.font_color
         words = self.text.split()
         current = ''
