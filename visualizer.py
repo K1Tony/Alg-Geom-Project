@@ -28,16 +28,13 @@ class Visualizer:
     __SCENE_DELAY = Time.SECOND
     __TOGGLE = Toggle.MANUAL
     __NEXT_SCENE = 0
-    __SHOW_FIGURES_WITH_POINTS = False
     __WAIT = -1
-    __CLICK_DELAY = 10 * Time.MILLISECOND
-    __CLICK_WAIT = -1
 
     __BUTTON_COUNT = 7
 
     def __init__(self, size: pg.Vector2 = None,
                  color: tuple[int, int, int] = Color.WHITE,
-                 flags: int = 0, show_window: bool = True):
+                 flags: int = 0):
         if size is None:
             screen_width, screen_height = pg.display.get_desktop_sizes()[0]
             screen_height -= 100
@@ -53,13 +50,11 @@ class Visualizer:
         self.__scenes = []
         self.__scene_played = -1
 
-        if show_window: self.__window = pg.display.set_mode(self.__size, flags=flags)
-        else: self.__window = None
+        self.__window = pg.display.set_mode(self.__size, flags=flags)
         self.__point_radius = self.__size[1] // 300
 
         self.__onclick = None
 
-        self.__new_line_onclick = []
         self.__new_rect_onclick = []
 
         self.__search_region = Rectangle()
@@ -79,7 +74,7 @@ class Visualizer:
             "Clear area": Button(top=3 * self.height // self.__BUTTON_COUNT, left=0,
                                  width=self.control_panel_width,
                                  height=self.height // self.__BUTTON_COUNT, border_color=Color.BLACK,
-                                 text="Clear area", font=self.font, callback=self.__clear_area),
+                                 text="Clear area", font=self.font, callback=self.clear),
             "Toggle": Button(top=4 * self.height // self.__BUTTON_COUNT, left=0,
                              width=self.control_panel_width,
                    height=self.height // self.__BUTTON_COUNT, border_color=Color.BLACK,
@@ -251,12 +246,6 @@ class Visualizer:
     def set_automatic(self):
         self.__TOGGLE = Toggle.AUTOMATIC
 
-    def show_figures_with_points(self):
-        self.__SHOW_FIGURES_WITH_POINTS = True
-
-    def show_figures_without_points(self):
-        self.__SHOW_FIGURES_WITH_POINTS = False
-
     def clear_scenes_and_return(self):
         self.__scene_played = 0
         self.__NEXT_SCENE = True
@@ -276,16 +265,8 @@ class Visualizer:
             pg.draw.circle(self.__window, point.color, point.pos, self.__point_radius)
         for line in self.__lines.items:
             pg.draw.line(self.__window, line.color, line.start.pos, line.end.pos, width=line.width)
-            if self.__SHOW_FIGURES_WITH_POINTS:
-                pg.draw.circle(self.__window, line.color, line.start.pos, self.__point_radius)
-                pg.draw.circle(self.__window, line.color, line.end.pos, self.__point_radius)
         for rect in self.__rects.items:
             self.draw_rectangle(rect)
-            if self.__SHOW_FIGURES_WITH_POINTS:
-                pg.draw.circle(self.__window, rect.border_color, rect.topleft, self.__point_radius)
-                pg.draw.circle(self.__window, rect.border_color, rect.topright, self.__point_radius)
-                pg.draw.circle(self.__window, rect.border_color, rect.bottomleft, self.__point_radius)
-                pg.draw.circle(self.__window, rect.border_color, rect.bottomright, self.__point_radius)
 
         for text, button in self.__buttons.items():
             self.draw_rectangle(button)
@@ -322,15 +303,13 @@ class Visualizer:
     def __replay(self):
         self.__scene_played = -1
 
-    def __clear_area(self):
+    def clear(self):
         self.__points = PointsCollection()
         self.__lines = LinesCollection()
         self.__rects = RectsCollection()
         self.__search_region = Rectangle()
         self.scenes.clear()
         self.__scene_played = -1
-
-    def clear(self): self.__clear_area()
 
     def __set_onclick(self, function_callback):
         self.__onclick = function_callback

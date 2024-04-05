@@ -16,7 +16,7 @@ def create_bounds_points(bound_x, bound_y, point_count=100):
 
 
 def create_edge_cluster(max_x, max_y, bound_x, bound_y, point_count=100):
-    edges = [(0, max_y), (max_x, max_y), (max_x, 0)]
+    edges = [(bound_x[0], max_y), (max_x, max_y), (max_x, bound_y[0])]
     points = [(uniform(*bound_x), uniform(*bound_y)) for _ in range(point_count)]
     return points + edges
 

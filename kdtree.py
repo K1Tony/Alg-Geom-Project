@@ -32,7 +32,6 @@ class _KDTreeNode:
         self.__region = region
         self.__left = left
         self.__right = right
-        self.__parent = parent
 
     @property
     def points(self):
@@ -50,20 +49,8 @@ class _KDTreeNode:
     def right(self):
         return self.__right
 
-    @property
-    def parent(self):
-        return self.__parent
-
     def is_leaf(self):
         return self is not None and self.left is None and self.right is None
-
-    def is_left_child(self):
-        if self is None or self.parent is None: return False
-        return self.parent.left is self
-
-    def is_right_child(self):
-        if self is None or self.parent is None: return False
-        return self.parent.right is self
 
 
 class KDTree:
@@ -94,10 +81,10 @@ class KDTree:
     def __build(self, points, depth=0, upper_end=None, lower_end=None, left_end=None, right_end=None):
         if len(points) < 1:
             return None
-        if upper_end is None: upper_end = min(points, key=lambda point: point.y).y
-        if left_end is None: left_end = min(points).x
-        if right_end is None: right_end = max(points).x
-        if lower_end is None: lower_end = max(points, key=lambda point: point.y).y
+        if upper_end is None: upper_end = min(points, key=lambda point: point.y).y - points[0].radius
+        if left_end is None: left_end = min(points).x - points[0].radius
+        if right_end is None: right_end = max(points).x + points[0].radius
+        if lower_end is None: lower_end = max(points, key=lambda point: point.y).y + points[0].radius
         region = Rectangle(upper_end, left_end,
                            right_end - left_end,
                            lower_end - upper_end, fill_color=Color.BLUE,
@@ -145,7 +132,7 @@ class KDTree:
         return _KDTreeNode(points, region, left, right)
 
     def __search(self, node: _KDTreeNode, result: list[Point]):
-        if node is None:
+        if node is None or not self.region.colliderect(node.region):
             return
         if node.is_leaf():
             if node.points[0] in self.region:
@@ -156,6 +143,7 @@ class KDTree:
                                                 lines=self.__visualizer.lines,
                                                 rects=RectsCollection([self.region]) +
                                                 RectsCollection([node.region.__copy__()], color=Color.PURPLE))
+                return
             if self.__show_visualization:
                 self.__visualizer.add_scene(points=self.__visualizer.points +
                                             PointsCollection(result, color=Color.BLACK, copy=True),
@@ -192,10 +180,6 @@ class KDTree:
     def region(self):
         return self.__region
 
-    @property
-    def brute_force(self):
-        return [point for point in self.points if point in self.region]
-
     def build(self):
         if self.__show_visualization:
             self.__visualizer.clear_scenes()
@@ -203,6 +187,10 @@ class KDTree:
                                         lines=self.__visualizer.lines,
                                         rects=RectsCollection([self.region]))
         self.__root = self.__build(self.__points.items)
+        if self.__show_visualization:
+            self.__visualizer.add_scene(points=self.points,
+                                    lines=self.__visualizer.last_scene.lines,
+                                    rects=RectsCollection([self.region]))
 
     def search(self):
         result = []
@@ -220,47 +208,3 @@ class KDTree:
     def set_parameters(self, points=None, region=None):
         if points is not None: self.__points = points
         if region is not None: self.__region = region
-
-
-class KDT:
-    def __init__(self, points, region: Rectangle):
-        self.points = points
-        self.region = region
-        self.bound = Rectangle(min(points, key=lambda p: p[1])[1], min(points, key=lambda p: p[0])[0],
-                               max(points, key=lambda p: p[0])[0], max(points, key=lambda p: p[1])[1])
-        self.root = self.build(self.points)
-
-    def build(self, points, depth=0):
-        if len(points) < 1:
-            return
-        top, bot = min(points, key=lambda point: point[1])[1], max(points, key=lambda point: point[1])[1]
-        left, right = min(points)[0], max(points)[0]
-        bound = Rectangle(top, left, right - left, bot - top)
-        if len(points) == 1:
-            return _KDTreeNode(points, bound)
-
-        if depth == 0:
-            pt = median(points, key=lambda point: point[0])
-        else:
-            pt = median(points, key=lambda point: point[1])
-        idx = points.index(pt)
-        left = self.build(points[:idx], depth + 1)
-        right = self.build(points[idx:], depth + 1)
-        return _KDTreeNode(points, bound, left, right)
-
-    def search_recursive(self, node: _KDTreeNode, result):
-        if node.is_leaf():
-            if node.points[0] in self.region:
-                result += node.points
-            return
-        if node.region in self.region:
-            result += node.points
-            return
-        if self.region.colliderect(node.region):
-            self.search_recursive(node.left, result)
-            self.search_recursive(node.right, result)
-
-    def search(self):
-        result = []
-        self.search_recursive(self.root, result)
-        return result

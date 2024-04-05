@@ -10,7 +10,6 @@ class Button(Rectangle):
                  fill_color: tuple[int, int, int] = Color.VOID, border_width: int = 3,
                  border_color: tuple[int, int, int] = Color.RED, font_color: tuple[int, int, int] = Color.BLACK,
                  hover_font_color: tuple[int, int, int] = Color.BLUE, hover_fill_color: tuple[int, int, int] = Color.CYAN,
-                 click_font_color: tuple[int, int, int] = Color.WHITE, click_fill_color: tuple[int, int, int] = Color.RED,
                  alpha: int = 255, text: str = '', font: pg.font.Font = None, callback=None):
         super(Button, self).__init__(top, left, width, height, fill_color, border_width, border_color, alpha)
         self.text = text
@@ -32,9 +31,6 @@ class Button(Rectangle):
         self.__hover_font_color = hover_font_color
         self.__hover_fill_color = hover_fill_color
 
-        self.__click_font_color = click_font_color
-        self.__click_fill_color = click_fill_color
-
         self.__active = True
 
     @property
@@ -43,8 +39,7 @@ class Button(Rectangle):
 
     def resized_copy(self, top, left, width, height):
         return Button(top, left, width, height, self.color, self.border_width, self.border_color,
-                      self.font_color, self.__hover_font_color, self.__hover_fill_color,
-                      self.__click_font_color, self.__click_fill_color, self.alpha, self.text,
+                      self.font_color, self.__hover_font_color, self.__hover_fill_color, self.alpha, self.text,
                       self.font, self.callback)
 
     def click(self):
@@ -84,8 +79,7 @@ class Button(Rectangle):
         self.color = self.__base_fill_color
         self.font_color = self.__base_font_color
 
-    def wrap_text(self, font: pg.font.Font, width, color: tuple[int, int, int] = None, background=None):
-        if color is None: color = self.font_color
+    def wrap_text(self, font: pg.font.Font, width):
         words = self.text.split()
         current = ''
         current_size = 0
@@ -94,11 +88,11 @@ class Button(Rectangle):
             size = font.size(word)[0]
             if i < len(words) - 1: size += font.size(' ')[0]
             if current_size + size > width:
-                surfaces.append(font.render(current, True, color, background))
+                surfaces.append(font.render(current, True, self.font_color))
                 current = word + ' '
                 current_size = size
             else:
                 current_size += size
                 current += word + ' '
-        surfaces.append(font.render(current, True, color, background))
+        surfaces.append(font.render(current, True, self.font_color))
         return surfaces

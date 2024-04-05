@@ -53,7 +53,9 @@ class Rectangle:
         return Rectangle(top, left, right - left, bot - top, **kwargs)
 
     def colliderect(self, other: "Rectangle"):
-        return (self.right >= other.left and self.top <= other.bottom and self.bottom >= other.top)\
-    or (self.left <= other.right and self.top <= other.bottom and self.bottom >= other.top)\
-    or (self.top <= other.bottom and self.left <= other.right and self.right >= other.left)\
-    or (self.bottom >= other.top and self.left <= other.right and self.right >= other.left)
+        if self.left > other.right or\
+                self.right < other.left or\
+                self.top > other.bottom or\
+                self.bottom < other.top:
+            return False
+        return True
